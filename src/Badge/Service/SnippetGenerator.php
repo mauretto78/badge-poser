@@ -12,6 +12,7 @@ namespace App\Badge\Service;
 
 use Symfony\Component\Routing\Router;
 use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\VarDumper\VarDumper;
 
 /**
  * Class SnippetGenerator
@@ -115,7 +116,6 @@ class SnippetGenerator
     {
         $badge['repository'] = $repository;
         $parameters = $this->routeParametersForBadgeCompiler->compile($badge);
-
         return $this->router->generate($badge['route'], $parameters, true);
     }
 

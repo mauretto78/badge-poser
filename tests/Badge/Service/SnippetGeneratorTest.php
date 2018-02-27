@@ -2,80 +2,64 @@
 
 namespace App\Tests\Service;
 
+use App\Badge\Service\RouteParametersForBadgeCompiler;
 use App\Badge\Service\SnippetGenerator;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
-use Symfony\Component\Routing\Route;
-use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\Router;
+use Symfony\Component\VarDumper\VarDumper;
 
 class SnippetGeneratorTest extends TestCase
 {
 
     /**
-     * @dataProvider badgesRoutesProvider
+     * @var Router
      */
-    public function testCompileRouteParametersForBadge($badges, $routes, $expectedParams)
+    private $router;
+
+    /**
+     * @var SnippetGenerator
+     */
+    private $snippetGenerator;
+
+    /**
+     * @var RouteParametersForBadgeCompiler
+     */
+    private $routeCompiler;
+
+    public function setUp()
     {
-        $router = $this->createMock(Router::class);
-
-        $router->method('getRouteCollection')->willReturn($routes);
-
-        $allInBadges = array_values($badges);
-        $snippetGenerator = new SnippetGenerator($router, $badges, $allInBadges);
-
-        $reflectionMethod = new ReflectionMethod($snippetGenerator, 'compileRouteParametersForBadge');
-        $reflectionMethod->setAccessible(true);
-
-        foreach ($badges as $i => $badge) {
-            $parameters = $reflectionMethod->invokeArgs($snippetGenerator, array($badge));
-            $this->assertEquals($expectedParams[$i], $parameters);
-        }
-
+        $this->router = $this->createMock(Router::class);
+        $this->routeCompiler = $this->createMock(RouteParametersForBadgeCompiler::class);
+        $this->snippetGenerator = new SnippetGenerator($this->router, [], [], 'packagist_route', $this->routeCompiler);
     }
 
-    public function badgesRoutesProvider()
+    public function test_generateImg()
     {
-        $badges = array(
-            array(
-                'route' => 'pugx_badge_test_1',
-                'name'  => 'Test Route #1',
-                'parameter1' => 'value1',
-                'parameter2' => 'value2'
-            ),
-            array(
-                'route' => 'pugx_badge_test_2',
-                'name'  => 'Test Route #2',
-                'param1' => 'value#1',
-                'param2' => 'value#2'
-            ),
-        );
+        $badge = [
+            'name' => 'latest_stable_version',
+            'label' => 'Latest Stable Version',
+            'route' => 'pugx_badge_version_latest',
+            'latest' => 'stable'
+        ];
 
-        $routeTest1 = new Route(
-            '/test1/{parameter1}/{parameter2}',
-            array('parameter1' => '%d'),
-            array('parameter2' => '%d')
-        );
+        $this->router->method('generate')
+            ->with('pugx_badge_version_latest', ['param1' => 1, 'param2' => 'b'], true)
+            ->willReturn('full/valid/route');
 
-        $routeTest2 = new Route(
-            '/test2/{parameter1}/{parameter2}',
-            array('param2' => '%d','param1' => '%d')
-        );
+        $modifiedBadge = array_merge($badge, ['repository' => 'packagist/repository']);
+        $this->routeCompiler->method('compile')->with($modifiedBadge)->willReturn(['param1' => 1, 'param2' => 'b']);
+        $generatedImage = $this->snippetGenerator->generateImg($badge, 'packagist/repository');
 
-        $validRoutes = new RouteCollection();
-        $validRoutes->add('pugx_badge_test_1', $routeTest1);
-        $validRoutes->add('pugx_badge_test_2', $routeTest2);
-
-        return array(
-            array(
-                $badges,
-                $validRoutes,
-                array(
-                    array('parameter1' => 'value1', 'parameter2' => 'value2'),
-                    array('param1' => 'value#1', 'param2' => 'value#2')
-                )
-            )
-        );
+        $this->assertEquals('full/valid/route',$generatedImage);
     }
 
+    public function test_generateRepositoryLink()
+    {
+        $this->router->method('generate')
+            ->with('packagist_route', ['repository' => 'packagist/repository'], true)
+            ->willReturn('full/valid/route');
+
+        $repositoryLink = $this->snippetGenerator->generateRepositoryLink('packagist/repository');
+        $this->assertEquals('full/valid/route', $repositoryLink);
+    }
 }
