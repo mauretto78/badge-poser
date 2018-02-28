@@ -31,6 +31,7 @@ services:
         class: Redis
 
     App\Stats\Persister\PersisterInterface: '@App\Stats\Persister\RedisPersister'
+    Github\Client: ~
     GuzzleHttp\Client: ~
     GuzzleHttp\ClientInterface: '@GuzzleHttp\Client'
     Packagist\Api\Client: ~
